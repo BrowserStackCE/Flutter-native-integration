@@ -77,3 +77,60 @@ Check the pubspec.yaml file and make sure you have added those dependencies
    Current value: `distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip`
    Update to: `distributionUrl=https://services.gradle.org/distributions/gradle-8.8-all.zip`
 4. Run your project again. Gradle will automatically download the updated version. 
+
+## To Prepare iOS Flutter test package for testing
+1. On Xcode, open `ios/Runner.xcworkspace` in your app’s iOS folder.
+2. Ensure that the `iOS Deployment Target` setting in the Build Settings section for the RunnerTests file matches the setting in the Runner file.
+3. Add a test file `RunnerTests.m` to a `RunnerTests` target file in Xcode. 
+4. Execute the following commands:
+   - `output="../build/ios_integration"`
+   - `product="build/ios_integration/Build/Products"`
+   - `flutter build ios integration_test/app_test.dart --release` If you encounter the error "module 'integration_test' not found" please refer to the resolution provided at the end of the IOS section.
+   - `pushd ios`
+   - `xcodebuild -workspace Runner.xcworkspace -scheme Runner -config Flutter/Release.xcconfig -derivedDataPath $output -sdk iphoneos build-for-testing` 
+   - `popd`
+   - `pushd $product`
+   - `zip -r "com.khunsha.flutterNative.zip" "Release-iphoneos" "Runner_iphoneos16.4-arm64.xctestrun"` xctestrun file is present at the build output path build/ios_integration/Build/Products.
+   - `popd`
+
+### You can now find your zip file at the following location:
+- zip file: `build/ios_integration/Build/Products/com.khunsha.flutterNative.zip`
+
+### Running tests on BrowserStack
+  - ##### upload test package
+  ```
+  curl -u "BROWSERSTACK_USERNAME:BROWSERSTACK_ACCESS_KEY" \
+   -X POST "https://api-cloud.browserstack.com/app-automate/flutter-integration-tests/v2/android/app" \
+   -F "file=@/path/to/your/ios/test/package.zip"
+   ```
+<sub>Note down the test_package_url from the response</sub>
+   - #### run the tests
+   ```
+   curl -u "BROWSERSTACK_USERNAME:BROWSERSTACK_ACCESS_KEY" \
+   -X POST "https://api-cloud.browserstack.com/app-automate/flutter-integration-tests/v2/android/build" \
+   -d '{"devices": ["iPhone 14-18"], "testPackage":"<TEST_PACKAGE_URL>","networkLogs":"true","deviceLogs":"true"}' \
+   -H "Content-Type: application/json"
+   ```
+
+
+### To resolve the "Module 'integration_test' Not Found" Error, follow these steps:
+
+Follow these steps to resolve the issue:
+
+1. **Set the Build Configuration to Release**
+   - Open the Runner project in Xcode.
+   - Select the `Release` configuration for command-line builds. Refer to the screenshot below:  
+     ![Select Release in Xcode](./Screenshot-1.png)
+
+2. **Run the Following Commands** (if the above step does not resolve the issue):
+   ```bash
+   flutter pub get
+   cd ios
+   rm -rf Pods/ Podfile.lock
+   pod install
+
+### To resolve the Cocoapods Installation Issues on Apple Silicon, follow these steps:
+- Run the following command:
+   `sudo arch -x86_64 gem install ffi`
+- Navigate to the ios folder and run:
+   `arch -x86_64 pod install`
